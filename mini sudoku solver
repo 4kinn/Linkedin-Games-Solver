@@ -1,0 +1,150 @@
+//Sudoku
+
+javascript:(async function LinkedInSudokuSolver() {
+    console.clear();
+    console.log("🧩 STARTING SUDOKU BOT...");
+
+    // --- 1. COLLECT CELLS ---
+    let rawCells = Array.from(document.querySelectorAll('.sudoku-cell'));
+    
+    // Sort by index to ensure grid order
+    rawCells.sort((a, b) => {
+        const idxA = parseInt(a.getAttribute('data-cell-idx') || '0');
+        const idxB = parseInt(b.getAttribute('data-cell-idx') || '0');
+        return idxA - idxB;
+    });
+
+    if (rawCells.length === 0) {
+        alert("❌ No cells found! Refresh the page (F5) and try again.");
+        return;
+    }
+
+    // Detect Grid Size (4x4, 6x6, or 9x9)
+    const total = rawCells.length;
+    const N = Math.sqrt(total);
+    if (!Number.isInteger(N)) {
+        alert(`❌ Error: Found ${total} cells, this is not a valid Sudoku size!`);
+        return;
+    }
+    console.log(`✅ Detected ${N}x${N} Grid.`);
+
+    // Determine Box Dimensions
+    // 4x4 -> 2x2
+    // 6x6 -> 2x3 (Standard LinkedIn 6x6 is 2 rows, 3 cols)
+    // 9x9 -> 3x3
+    let boxH, boxW;
+    if (N === 4) { boxH = 2; boxW = 2; }
+    else if (N === 6) { boxH = 2; boxW = 3; } 
+    else { boxH = 3; boxW = 3; }
+
+    // --- 2. READ GRID ---
+    let grid = [];
+    let originalGrid = []; // To track pre-filled cells
+    
+    for (let r = 0; r < N; r++) {
+        let row = [];
+        let origRow = [];
+        for (let c = 0; c < N; c++) {
+            let cell = rawCells[r * N + c];
+            // Get number, 0 if empty
+            let txt = cell.innerText.trim();
+            let val = parseInt(txt) || 0;
+            row.push(val);
+            origRow.push(val !== 0);
+        }
+        grid.push(row);
+        originalGrid.push(origRow);
+    }
+
+    // --- 3. SOLVER ALGORITHM (Backtracking) ---
+    function isValid(g, r, c, num) {
+        // Row and Column check
+        for (let i = 0; i < N; i++) {
+            if (g[r][i] === num) return false;
+            if (g[i][c] === num) return false;
+        }
+        // Box check
+        let startR = Math.floor(r / boxH) * boxH;
+        let startC = Math.floor(c / boxW) * boxW;
+        for (let i = 0; i < boxH; i++) {
+            for (let j = 0; j < boxW; j++) {
+                if (g[startR + i][startC + j] === num) return false;
+            }
+        }
+        return true;
+    }
+
+    function solve(g) {
+        for (let r = 0; r < N; r++) {
+            for (let c = 0; c < N; c++) {
+                if (g[r][c] === 0) {
+                    for (let num = 1; num <= N; num++) {
+                        if (isValid(g, r, c, num)) {
+                            g[r][c] = num;
+                            if (solve(g)) return true;
+                            g[r][c] = 0;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    console.log("🧠 Solving...");
+    // Clone grid for solution
+    let solutionGrid = JSON.parse(JSON.stringify(grid));
+    
+    if (!solve(solutionGrid)) {
+        alert("❌ No solution found! Maybe the 6x6 block structure is different or I misread the numbers.");
+        return;
+    }
+
+    // --- 4. GHOST OVERLAY (VISUALS) ---
+    console.log("✅ Solution found! Adding overlay...");
+    const overlayId = 'sudoku-ghost-overlay';
+    const oldOverlay = document.getElementById(overlayId);
+    if (oldOverlay) oldOverlay.remove();
+
+    const overlayLayer = document.createElement('div');
+    overlayLayer.id = overlayId;
+    overlayLayer.style.position = 'absolute';
+    overlayLayer.style.top = '0'; overlayLayer.style.left = '0';
+    overlayLayer.style.width = '100%'; overlayLayer.style.height = '100%';
+    overlayLayer.style.zIndex = '9999';
+    overlayLayer.style.pointerEvents = 'none'; // Clicks pass through to the game
+    document.body.appendChild(overlayLayer);
+
+    // Draw numbers on empty cells
+    for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+            // Only fill if it was originally empty
+            if (!originalGrid[r][c]) {
+                const cell = rawCells[r * N + c];
+                const rect = cell.getBoundingClientRect();
+                const val = solutionGrid[r][c];
+                
+                const ghostNum = document.createElement('div');
+                ghostNum.innerText = val;
+                ghostNum.style.position = 'absolute';
+                ghostNum.style.left = (rect.left + window.scrollX) + 'px';
+                ghostNum.style.top = (rect.top + window.scrollY) + 'px';
+                ghostNum.style.width = rect.width + 'px';
+                ghostNum.style.height = rect.height + 'px';
+                ghostNum.style.display = 'flex';
+                ghostNum.style.justifyContent = 'center';
+                ghostNum.style.alignItems = 'center';
+                ghostNum.style.fontSize = (rect.height * 0.6) + 'px';
+                ghostNum.style.color = '#0073b1'; // LinkedIn Blue
+                ghostNum.style.fontWeight = 'bold';
+                ghostNum.style.opacity = '0.8';
+                ghostNum.style.fontFamily = 'sans-serif';
+                ghostNum.style.pointerEvents = 'none';
+                
+                overlayLayer.appendChild(ghostNum);
+            }
+        }
+    }
+    console.log("✅ Done! Answers are shown on the screen.");
+})();

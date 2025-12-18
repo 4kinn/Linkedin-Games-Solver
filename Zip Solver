@@ -1,0 +1,63 @@
+javascript:(function(){
+    const elements = document.querySelectorAll('.zip-hint-overlay, .wall-marker, #zip-canvas');
+    elements.forEach(el => el.remove());
+
+    const container = document.querySelector('[data-testid="tango-game-container"]') || document.body;
+
+    try {
+        const rawData = window.__como_rehydration__ || [];
+        const dataStr = JSON.stringify(rawData);
+        const solutionMatch = dataStr.match(/\\\"solution\\\":\[([\d,]+)\]/);
+
+        if (!solutionMatch) {
+            throw new Error("Data not found in source");
+        }
+
+        const path = solutionMatch[1].split(',').map(Number);
+        const canvas = document.createElement('canvas');
+        canvas.id = 'zip-canvas';
+        
+        const rect = container.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        Object.assign(canvas.style, {
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            pointerEvents: 'none',
+            zIndex: '9999'
+        });
+
+        container.style.position = 'relative';
+        container.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 12;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#00ffff';
+
+        for (let i = 0; i < path.length - 1; i++) {
+            const c1 = document.querySelector(`[data-cell-idx="${path[i]}"]`);
+            const c2 = document.querySelector(`[data-cell-idx="${path[i+1]}"]`);
+
+            if (c1 && c2) {
+                const r1 = c1.getBoundingClientRect();
+                const r2 = c2.getBoundingClientRect();
+
+                ctx.beginPath();
+                ctx.moveTo(r1.left - rect.left + r1.width / 2, r1.top - rect.top + r1.height / 2);
+                ctx.lineTo(r2.left - rect.left + r2.width / 2, r2.top - rect.top + r2.height / 2);
+                ctx.stroke();
+            }
+        }
+
+        console.log("ZIP SOLVED");
+
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+})();

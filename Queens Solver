@@ -1,0 +1,131 @@
+javascript:(function(){
+    console.clear();
+    console.log("👑 QUEENS SOLVER");
+
+    /* 1. FIND BOARD (Based on Analysis) */
+    /* Collect all elements with data-cell-idx attribute */
+    let cells = Array.from(document.querySelectorAll('[data-cell-idx]'));
+    
+    /* Fallback: try class name if attribute not found */
+    if (cells.length === 0) {
+        cells = Array.from(document.querySelectorAll('.queens-cell-with-border'));
+    }
+
+    if(cells.length === 0) return alert("❌ Board not found! Are you on the correct page?");
+
+    /* Sort cells by index to ensure correct grid order */
+    cells.sort((a, b) => {
+        return parseInt(a.getAttribute('data-cell-idx')) - parseInt(b.getAttribute('data-cell-idx'));
+    });
+
+    const totalCells = cells.length;
+    const size = Math.sqrt(totalCells);
+    
+    if(!Number.isInteger(size)) return alert("❌ Error: Found " + totalCells + " cells. Not a perfect square grid!");
+
+    console.log("✅ Board detected: " + size + "x" + size);
+
+    /* 2. READ COLORS & STRUCTURE */
+    let grid = [];
+    
+    cells.forEach((cell, idx) => {
+        const r = Math.floor(idx / size);
+        const c = idx % size;
+        if (!grid[r]) grid[r] = [];
+        
+        /* Remove old icons */
+        const oldIcon = cell.querySelector('.solver-icon');
+        if(oldIcon) oldIcon.remove();
+
+        /* Get background color (Crucial for regions) */
+        const bgColor = window.getComputedStyle(cell).backgroundColor;
+        
+        grid[r][c] = { r: r, c: c, color: bgColor, hasQueen: false, el: cell };
+    });
+
+    /* 3. SOLVER ENGINE (Backtracking) */
+    function isValid(r, c, color) {
+        /* Row and Column Check */
+        for (let i = 0; i < size; i++) {
+            if (grid[r][i].hasQueen) return false;
+            if (grid[i][c].hasQueen) return false;
+        }
+
+        /* Region (Color) Check */
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                if (grid[i][j].hasQueen && grid[i][j].color === color) return false;
+            }
+        }
+
+        /* Neighbor Check (8 Directions - No touch allowed) */
+        const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+        for (let d of directions) {
+            const nr = r + d[0];
+            const nc = c + d[1];
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+                if (grid[nr][nc].hasQueen) return false;
+            }
+        }
+        return true;
+    }
+
+    function solve(row) {
+        if (row === size) return true;
+
+        for (let col = 0; col < size; col++) {
+            if (isValid(row, col, grid[row][col].color)) {
+                grid[row][col].hasQueen = true;
+                if (solve(row + 1)) return true;
+                grid[row][col].hasQueen = false;
+            }
+        }
+        return false;
+    }
+
+    /* 4. VISUALIZATION */
+    if (solve(0)) {
+        console.log("✅ Solution found! Adding icons...");
+        grid.forEach(row => {
+            row.forEach(cell => {
+                if (cell.hasQueen) {
+                    /* Add Crown 👑 */
+                    const icon = document.createElement("div");
+                    icon.className = "solver-icon";
+                    icon.innerText = "👑";
+                    
+                    Object.assign(icon.style, {
+                        position: "absolute",
+                        top: "0", left: "0",
+                        width: "100%", height: "100%",
+                        display: "flex", justifyContent: "center", alignItems: "center",
+                        fontSize: (cell.el.clientHeight * 0.6) + "px",
+                        pointerEvents: "none", 
+                        zIndex: "999",
+                        textShadow: "0 0 5px black"
+                    });
+                    
+                    if(window.getComputedStyle(cell.el).position === 'static') {
+                        cell.el.style.position = 'relative';
+                    }
+                    cell.el.appendChild(icon);
+                } else {
+                    /* Add 'X' for empty spots */
+                    const xIcon = document.createElement("div");
+                    xIcon.className = "solver-icon";
+                    xIcon.innerText = "×";
+                    Object.assign(xIcon.style, {
+                        position: "absolute", top: "0", left: "0", width: "100%", height: "100%",
+                        display: "flex", justifyContent: "center", alignItems: "center",
+                        fontSize: (cell.el.clientHeight * 0.4) + "px",
+                        pointerEvents: "none", zIndex: "99", color: "rgba(0,0,0,0.3)"
+                    });
+                    if(window.getComputedStyle(cell.el).position === 'static') cell.el.style.position = 'relative';
+                    cell.el.appendChild(xIcon);
+                }
+            });
+        });
+    } else {
+        alert("❌ No solution found! (Colors might be detected incorrectly)");
+    }
+})();
