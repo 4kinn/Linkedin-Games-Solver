@@ -1,5 +1,3 @@
-//Sudoku
-
 javascript:(async function LinkedInSudokuSolver() {
     console.clear();
     console.log("🧩 STARTING SUDOKU BOT...");
